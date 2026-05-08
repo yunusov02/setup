@@ -1,0 +1,151 @@
+#!/bin/bash
+
+# ==========================================
+#  UBUNTU PYTHON BACKEND DEV SETUP SCRIPT v2
+# ==========================================
+
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+YELLOW='\033[1;33m'
+NC='\033[0m'
+
+echo -e "${BLUE}Starting Python Backend Environment Setup v2...${NC}"
+
+# ------------------------------------------
+# 1. SYSTEM UPDATE & ESSENTIALS
+# ------------------------------------------
+echo -e "${GREEN}--- Updating System & Installing Essentials ---${NC}"
+sudo apt update && sudo apt upgrade -y
+sudo apt install -y \
+    build-essential \
+    libssl-dev \
+    libffi-dev \
+    python3-dev \
+    python3-pip \
+    python3-venv \
+    git \
+    curl \
+    wget \
+    htop \
+    net-tools \
+    jq \
+    unzip \
+    zsh \
+    tmux \
+    neovim \
+    nano \
+    sqlite3 \
+    libsqlite3-dev \
+    libpq-dev \
+    postgresql-client \
+    default-jre
+
+# ------------------------------------------
+# 2. PIP & PYTHON TOOLS (PIPX)
+# ------------------------------------------
+echo -e "${GREEN}--- Upgrading Pip & Installing Pipx ---${NC}"
+python3 -m pip install --upgrade pip
+pip install pipx
+python3 -m pipx ensurepath
+
+export PATH="$PATH:$(python3 -m site --user-base)/bin"
+
+echo -e "${GREEN}--- Installing Global Python CLI Tools ---${NC}"
+pipx install poetry
+pipx install ruff
+pipx install black
+pipx install pytest
+pipx install httpie
+pipx install jupyterlab
+
+# ------------------------------------------
+# 3. CODE EDITORS (VS Code & PyCharm)
+# ------------------------------------------
+echo -e "${GREEN}--- Installing VS Code ---${NC}"
+wget -qO- https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > packages.microsoft.gpg
+sudo install -D -o root -g root -m 644 packages.microsoft.gpg /etc/apt/keyrings/packages.microsoft.gpg
+sudo sh -c 'echo "deb [arch=amd64,arm64,armhf signed-by=/etc/apt/keyrings/packages.microsoft.gpg] https://packages.microsoft.com/repos/code stable main" > /etc/apt/sources.list.d/vscode.list'
+rm -f packages.microsoft.gpg
+sudo apt update
+sudo apt install -y code
+
+echo -e "${GREEN}--- Installing PyCharm Community ---${NC}"
+sudo snap install pycharm-community --classic
+
+# ------------------------------------------
+# 4. GUI TOOLS (Postman & DBeaver)
+# ------------------------------------------
+echo -e "${GREEN}--- Installing Postman ---${NC}"
+wget -qO- https://dl.pstmn.io/download/latest/linux64 | sudo tar -xz -C /opt
+sudo ln -s /opt/Postman/Postman /usr/bin/postman
+# Create desktop shortcut
+cat <<EOF | sudo tee /usr/share/applications/postman.desktop
+[Desktop Entry]
+Name=Postman
+Exec=/opt/Postman/Postman
+Icon=/opt/Postman/app/resources/app/assets/icon.png
+Terminal=false
+Type=Application
+Categories=Development;
+EOF
+
+echo -e "${GREEN}--- Installing DBeaver ---${NC}"
+wget -qO- https://dbeaver.io/debs/dbeaver.gpg.key | sudo gpg --dearmor -o /etc/apt/keyrings/dbeaver.gpg
+echo "deb [signed-by=/etc/apt/keyrings/dbeaver.gpg] https://dbeaver.io/debs/dbeaver-ce /" | sudo tee /etc/apt/sources.list.d/dbeaver.list
+sudo apt update
+sudo apt install -y dbeaver-ce
+
+# ------------------------------------------
+# 5. DOCKER & DOCKER COMPOSE
+# ------------------------------------------
+echo -e "${GREEN}--- Installing Docker ---${NC}"
+sudo apt-get install -y ca-certificates curl gnupg
+sudo install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+sudo chmod a+r /etc/apt/keyrings/docker.gpg
+
+echo \
+  "deb [arch="$(dpkg --print-architecture)" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+  "$(. /etc/os-release && echo "$VERSION_CODENAME")" stable" | \
+  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+sudo apt update
+sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+sudo usermod -aG docker $USER
+
+# ------------------------------------------
+# 6. DATABASES (Postgres & Redis)
+# ------------------------------------------
+echo -e "${GREEN}--- Installing Databases ---${NC}"
+sudo apt install -y postgresql postgresql-contrib
+sudo systemctl start postgresql
+sudo systemctl enable postgresql
+
+sudo apt install -y redis-server
+sudo systemctl start redis-server
+sudo systemctl enable redis-server
+
+# ------------------------------------------
+# 7. SHELL ENHANCEMENT (OH MY ZSH)
+# ------------------------------------------
+echo -e "${GREEN}--- Installing Oh My Zsh & Plugins ---${NC}"
+if [ ! -d "$HOME/.oh-my-zsh" ]; then
+    sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+fi
+
+git clone https://github.com/zsh-users/zsh-syntax-highlighting.git ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting
+git clone https://github.com/zsh-users/zsh-autosuggestions ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-autosuggestions
+
+sed -i 's/plugins=(git)/plugins=(git zsh-syntax-highlighting zsh-autosuggestions)/g' ~/.zshrc
+sudo chsh -s $(which zsh) $USER
+
+# ------------------------------------------
+# FINISH
+# ------------------------------------------
+echo -e "${BLUE}==================================================${NC}"
+echo -e "${GREEN} ✅ SETUP COMPLETE! ✅ ${NC}"
+echo -e "${BLUE}==================================================${NC}"
+echo -e "1. ${YELLOW}RESTART YOUR PC${NC} (Required for Docker/Shell changes)."
+echo -e "2. New Apps are in your Menu: ${GREEN}PyCharm, DBeaver, Postman${NC}"
+echo -e "3. Terminal tools ready: ${GREEN}nvim, nano, sqlite3${NC}"
+echo -e "${BLUE}==================================================${NC}"
